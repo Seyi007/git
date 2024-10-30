@@ -73,12 +73,13 @@ test_expect_success 'initialize git svn' 'git svn init "$svnrepo"'
 test_expect_success 'fetch revisions from svn' 'git svn fetch'
 
 name='test svn:keywords ignoring'
-test_expect_success "$name" \
+test_expect_success "$name" '
 	'git checkout -b mybranch remotes/git-svn &&
 	echo Hi again >>kw.c &&
 	git commit -a -m "test keywords ignoring" &&
 	git svn set-tree remotes/git-svn..mybranch &&
 	git pull . remotes/git-svn'
+'
 
 expect='/* $Id$ */'
 got="$(sed -ne 2p kw.c)"
@@ -94,10 +95,11 @@ test_expect_success "propset CR on crlf files" '
 	 )
 '
 
-test_expect_success 'fetch and pull latest from svn and checkout a new wc' \
+test_expect_success 'fetch and pull latest from svn and checkout a new wc' '
 	'git svn fetch &&
 	 git pull . remotes/git-svn &&
 	 svn_cmd co "$svnrepo" new_wc'
+'
 
 for i in crlf ne_crlf lf ne_lf cr ne_cr empty_cr empty_lf empty empty_crlf
 do
@@ -110,15 +112,17 @@ cd test_wc
 	printf '$Id$\rHello\rWorld' >ne_cr
 	a_cr=$(printf '$Id$\r\nHello\r\nWorld\r\n' | git hash-object --stdin)
 	a_ne_cr=$(printf '$Id$\r\nHello\r\nWorld' | git hash-object --stdin)
-	test_expect_success 'Set CRLF on cr files' \
-	'svn_cmd propset svn:eol-style CRLF cr &&
-	 svn_cmd propset svn:eol-style CRLF ne_cr &&
-	 svn_cmd propset svn:keywords Id cr &&
-	 svn_cmd propset svn:keywords Id ne_cr &&
-	 svn_cmd commit -m "propset CRLF on cr files"'
+	test_expect_success 'Set CRLF on cr files' '
+		svn_cmd propset svn:eol-style CRLF cr &&
+		svn_cmd propset svn:eol-style CRLF ne_cr &&
+		svn_cmd propset svn:keywords Id cr &&
+		svn_cmd propset svn:keywords Id ne_cr &&
+		svn_cmd commit -m "propset CRLF on cr files"
+	'
 cd ..
-test_expect_success 'fetch and pull latest from svn' \
+test_expect_success 'fetch and pull latest from svn' '
 	'git svn fetch && git pull . remotes/git-svn'
+'
 
 b_cr="$(git hash-object cr)"
 b_ne_cr="$(git hash-object ne_cr)"
@@ -179,7 +183,7 @@ test_expect_success 'test create-ignore' "
 	cmp ./deeply/nested/directory/.gitignore create-ignore.expect &&
 	git ls-files -s >ls_files_result &&
 	grep gitignore ls_files_result | cmp - create-ignore-index.expect
-	"
+"
 
 cat >prop.expect <<\EOF
 
@@ -207,7 +211,7 @@ test_expect_success 'test propget' '
 	test_propget svn:ignore nested/ ../prop.expect &&
 	test_propget svn:ignore ./nested ../prop.expect &&
 	test_propget svn:ignore .././deeply/nested ../prop.expect
-	'
+'
 
 cat >prop.expect <<\EOF
 Properties on '.':
@@ -231,6 +235,6 @@ test_expect_success 'test proplist' "
 
 	git svn proplist nested/directory/.keep >actual &&
 	cmp prop2.expect actual
-	"
+"
 
 test_done
