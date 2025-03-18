@@ -1,5 +1,6 @@
 #define DISABLE_SIGN_COMPARE_WARNINGS
 
+#include "unit-test.h"
 #include "lib-reftable.h"
 #include "test-lib.h"
 #include "reftable/constants.h"
@@ -93,6 +94,78 @@ void t_reftable_write_to_buf(struct reftable_buf *buf,
 		check_int(stats->ref_stats.blocks, >, 0);
 	if (nlogs)
 		check_int(stats->log_stats.blocks, >, 0);
+
+	reftable_writer_free(writer);
+}
+
+struct reftable_writer *cl_reftable_strbuf_writer(struct reftable_buf *buf,
+						 struct reftable_write_options *opts)
+{
+	struct reftable_writer *writer;
+	int ret = reftable_writer_new(&writer, &strbuf_writer_write, &strbuf_writer_flush,
+				      buf, opts);
+	cl_assert(ret != NULL);
+	return writer;
+}
+
+void cl_reftable_write_to_buf(struct reftable_buf *buf,
+			     struct reftable_ref_record *refs,
+			     size_t nrefs,
+			     struct reftable_log_record *logs,
+			     size_t nlogs,
+			     struct reftable_write_options *_opts)
+{
+	struct reftable_write_options opts = { 0 };
+	const struct reftable_stats *stats;
+	struct reftable_writer *writer;
+	uint64_t min = 0xffffffff;
+	uint64_t max = 0;
+	int ret;
+
+	if (_opts)
+		opts = *_opts;
+
+	for (size_t i = 0; i < nrefs; i++) {
+		uint64_t ui = refs[i].update_index;
+		if (ui > max)
+			max = ui;
+		if (ui < min)
+			min = ui;
+	}
+	for (size_t i = 0; i < nlogs; i++) {
+		uint64_t ui = logs[i].update_index;
+		if (ui > max)
+			max = ui;
+		if (ui < min)
+			min = ui;
+	}
+
+	writer = t_reftable_strbuf_writer(buf, &opts);
+	reftable_writer_set_limits(writer, min, max);
+
+	if (nrefs) {
+		cl_assert_equal_i(reftable_writer_add_refs(writer, refs, nrefs), 0);
+	}
+
+	if (nlogs) {
+		cl_assert_equal_i(reftable_writer_add_logs(writer, logs, nlogs), 0);
+	}
+
+	cl_assert_equal_i(reftable_writer_close(writer), 0);
+
+	stats = reftable_writer_stats(writer);
+	for (size_t i = 0; i < stats->ref_stats.blocks; i++) {
+		size_t off = i * (opts.block_size ? opts.block_size
+						  : DEFAULT_BLOCK_SIZE);
+		if (!off)
+			off = header_size(opts.hash_id == REFTABLE_HASH_SHA256 ? 2 : 1);
+		cl_assert_equal_s(buf->buf[off], 'r');
+	}
+
+	if (nrefs)
+		cl_assert(stats->ref_stats.blocks > 0);
+	if (nlogs)
+		cl_assert(stats->log_stats.blocks > 0);
 
 	reftable_writer_free(writer);
 }
