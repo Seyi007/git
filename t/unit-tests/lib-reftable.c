@@ -12,13 +12,13 @@ void t_reftable_set_hash(uint8_t *p, int i, enum reftable_hash id)
 	memset(p, (uint8_t)i, hash_size(id));
 }
 
-static ssize_t strbuf_writer_write(void *b, const void *data, size_t sz)
+ssize_t strbuf_writer_write(void *b, const void *data, size_t sz)
 {
 	strbuf_add(b, data, sz);
 	return sz;
 }
 
-static int strbuf_writer_flush(void *arg UNUSED)
+int strbuf_writer_flush(void *arg UNUSED)
 {
 	return 0;
 }
